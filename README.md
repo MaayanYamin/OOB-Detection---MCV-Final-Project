@@ -66,7 +66,7 @@ targets used as extra supervision. Then:
 - VideoMAE and V-JEPA 2 frozen, with a small head that also sees the two colours
 - on a GPU: VideoMAE fine-tuned, VideoMAE + the ribbon head, V-JEPA 2 on three inputs,
   Qwen2.5-VL-3B zero-shot and with QLoRA, and two unseen-arena runs
-- the proof of concept: MobileNetV2 + LSTM, in `poc/`, on all 191 clips
+- MobileNetV2 + LSTM with the home jersey colour as a second input (`poc/`)
 
 Every method answers the same question — *the two jerseys are colour A and colour B, which
 touched last?* — with the colours in random order and both orders averaged, and every
@@ -108,12 +108,11 @@ same fold. A new colour word needs its RGB in `finetune/common.py` and its hue i
 | `finetune/` | the shared protocol, the model inputs, the ribbon, the trained models, the gates |
 | `finetune/train_frozen.py` | the frozen-backbone runs |
 | `scripts/` | the cache pipeline and the methods that train nothing or train a linear head |
-| `poc/` | the original proof of concept, imported unchanged, plus its runner |
+| `poc/` | the MobileNetV2 + LSTM model and the script that runs it on the corpus |
 
 ## Third-party
 
-`poc/Basketball_OOB_Detection-main/` is our earlier proof of concept, included as it was and
-imported rather than copied. The ball detector is [WASB-SBDT](https://github.com/nttcom/WASB-SBDT).
+The ball detector is [WASB-SBDT](https://github.com/nttcom/WASB-SBDT).
 Backbones come from Hugging Face: `facebook/vjepa2-vitl-fpc64-256`,
 `MCG-NJU/videomae-base-finetuned-ssv2`, `openai/clip-vit-base-patch32`,
 `Qwen/Qwen2.5-VL-3B-Instruct`. Clips are NBA broadcast footage, used for a course project.

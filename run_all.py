@@ -35,7 +35,7 @@ NAMES = {
     "videomae_ball_game": "VideoMAE frozen + head, ball window",
     "vjepa2_raw_game": "V-JEPA 2 frozen + head, whole frame",
     "vjepa2_ball_game": "V-JEPA 2 frozen + head, ball window",
-    "poc_mobilenet_lstm_game": "proof of concept, MobileNetV2 + LSTM",
+    "poc_mobilenet_lstm_game": "MobileNetV2 + LSTM",
     "qwen_zs_raw_v2": "Qwen2.5-VL zero-shot, whole frame",
     "qwen_zs_ball_v2": "Qwen2.5-VL zero-shot, ball window",
     "qwen_lora_ball_v2_game": "Qwen2.5-VL QLoRA, ball window",

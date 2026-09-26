@@ -112,7 +112,7 @@ def honest(items, paths, labels, colours, epochs):
         print(f"fold {k}: {len(te)} test clips done", flush=True)
     path = save_run("poc_mobilenet_lstm_game_s0", items, p_home,
                     dict(model="poc_mobilenet_lstm", input="raw", protocol="game", seed=0,
-                         note="original PoC architecture, grouped folds, final epoch"))
+                         note="MobileNetV2 + LSTM, grouped folds, final epoch"))
     print("saved", path)
 
 def main():

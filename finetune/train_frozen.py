@@ -5,12 +5,29 @@ import time
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import CACHE, RESULTS, folds, load_items, save_run, score
 from frames import MEAN, STD, ClipSet
-from train_videomae import ColourHead
+
+class ColourHead(nn.Module):
+
+    def __init__(self, d, heads=8):
+        super().__init__()
+        self.q0 = nn.Parameter(torch.zeros(1, 1, d))
+        self.qc = nn.Sequential(nn.Linear(12, d), nn.GELU(), nn.Linear(d, d))
+        self.attn = nn.MultiheadAttention(d, heads, batch_first=True)
+        self.norm = nn.LayerNorm(d)
+        self.out = nn.Sequential(nn.Linear(d + 12, 256), nn.GELU(), nn.Dropout(0.3),
+                                 nn.Linear(256, 1))
+
+    def forward(self, tokens, code):
+        q = self.q0.expand(len(tokens), -1, -1) + self.qc(code).unsqueeze(1)
+        v, _ = self.attn(q, tokens, tokens)
+        return self.out(torch.cat([self.norm(v[:, 0]), code], 1)).squeeze(1)
+
 
 BACKBONES = {
     "vjepa2": ("facebook/vjepa2-vitl-fpc64-256", 256, 16),

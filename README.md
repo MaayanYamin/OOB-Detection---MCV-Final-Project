@@ -26,13 +26,21 @@ Then:
 python run_all.py
 ```
 
-That runs every method on all 191 clips and ends with one line per method:
+That runs every method in the paper on all 191 clips and ends with one line per method:
 
 ```
-VideoMAE frozen + head, whole frame           59.2%   191 clips   3 seeds
-V-JEPA 2 frozen + head, whole frame           58.6%   191 clips   3 seeds
-jersey colour around the ball                 57.5%   179 clips
-majority class (the bar)                      56.0%   191 clips
+VideoMAE (frozen) + head, whole frame       58.3%   191 clips   3 seeds
+jersey colour around the ball               57.5%   179 clips
+majority class (the bar)                    56.0%   191 clips
+MobileNetV2 + LSTM                          55.0%   191 clips
+CLIP zero-shot, ball window                 53.9%   178 clips
+VideoMAE fine-tuned + possession target     53.6%   191 clips   3 seeds
+V-JEPA 2 (frozen) + head, whole frame       52.4%   191 clips   3 seeds
+MobileNet features + linear classifier      51.8%   191 clips
+team of the player nearest the ball         51.1%   176 clips
+Qwen2.5-VL zero-shot, whole frame           48.7%   191 clips
+Qwen2.5-VL QLoRA, ball window               48.0%   191 clips   3 seeds
+ball/player kinematics + linear classifier  47.9%   169 clips
 ```
 
 Other flags:
@@ -46,48 +54,32 @@ python run_all.py --force       # re-run a stage whose output is already there
 ```
 
 Stages skip themselves when their output exists, so the run can be stopped and restarted; a
-stage that fails twice is left failed and the rest continue. Logs are in `logs/`, results in
-`finetune/results/`.
+stage that fails twice is left failed and the rest continue. Logs are in `logs/`, one result
+file per run in `finetune/results/`.
 
-The CPU part takes about two days on a laptop — most of it the person detector and the ball
-tracker, which run once and are cached in `cache/`. The GPU part is about 21 hours on an
-RTX 4060 Laptop, 8 GB.
+Eight of the twelve rows above run on a CPU, in about two days on a laptop — most of it the
+person detector and the ball tracker, which run once and are cached in `cache/`. Three need
+CUDA: the fine-tuned VideoMAE and the two Qwen2.5-VL runs, roughly 12 hours on an RTX 4060
+Laptop, 8 GB. Without a GPU they are reported as skipped and everything else still runs.
+`finetune/gpu_check.py` runs first on a GPU machine — `nvidia-smi`, the torch CUDA build, and
+one real CUDA matmul, because a mismatched build can import fine and still fail its first
+kernel — and the GPU stages are skipped if it fails, rather than training on the CPU for a
+week by accident.
 
 ## What gets run
 
 Caching from video first: player boxes and poses (YOLO11l), the ball track (WASB-SBDT with
-MonoTrack basketball weights, downloaded on demand), jersey crops, a team for each player
-box from the two filename colours, and the possession ribbon — per-frame ball-to-wrist
-targets used as extra supervision. Then:
-
-- jersey colour around the ball, and the team of the player nearest the ball
-- CLIP zero-shot, on the whole frame and on a window following the ball
-- MobileNet features + a linear head, and ball/player kinematics + a linear head
-- VideoMAE and V-JEPA 2 frozen, with a small head that also sees the two colours
-- on a GPU: VideoMAE fine-tuned, VideoMAE + the ribbon head, V-JEPA 2 on three inputs,
-  Qwen2.5-VL-3B zero-shot and with QLoRA, and two unseen-arena runs
-- MobileNetV2 + LSTM with the home jersey colour as a second input (`poc/`)
+MonoTrack basketball weights, downloaded on demand), jersey crops, a team for each player box
+from the two filename colours, and the possession target — per frame, whether the ball sits
+at a player's wrist and whose team that player is on, masked wherever the tracker cannot
+support a call. Then the methods in the table above.
 
 Every method answers the same question — *the two jerseys are colour A and colour B, which
-touched last?* — with the colours in random order and both orders averaged, and every
-method is scored the same way: 5 folds grouped by game so no game is in both training and
-test, the final epoch, accuracy against the majority-class bar. The `leak_*` columns in
-`manifest.csv` are never given to a model.
-
-A fold whose final loss sits at ln(2) = 0.693 did not train: averaging both colour orders
-makes p = 0.5 an exact fixed point, so that fold's accuracy measures the optimiser, not the
-task. Those folds are counted in each result file and in the accuracy lines.
-
-## The GPU stages
-
-`run_all.py` checks for CUDA and reports the GPU stages as skipped without it. With a GPU it
-runs `finetune/gpu_check.py` first — `nvidia-smi`, the torch CUDA build, and one real CUDA
-matmul, because a mismatched build can import fine and still fail its first kernel — and
-blocks training if that fails. It then runs `finetune/run_all.py`, which checks the caches,
-runs two gates (`verify_run.py`: the colour words, the fold splits, the colour-order
-antisymmetry, the quarantined columns, that every pretrained tensor reaches the model;
-`escape_check.py`: can each model memorise 16 clips it is allowed to see), and only then
-trains.
+touched last?* — with the colours in random order and both orders averaged, and every method
+is scored the same way: 5 folds grouped by game so no game is in both training and test, the
+final epoch, accuracy against the majority-class bar. A setting run with three seeds is
+reported as the mean over its seeds. The `leak_*` columns in `manifest.csv` are never given to
+a model.
 
 ## Filenames
 
@@ -105,9 +97,9 @@ same fold. A new colour word needs its RGB in `finetune/common.py` and its hue i
 | path | what |
 |---|---|
 | `run_all.py` | the only entry point |
-| `finetune/` | the shared protocol, the model inputs, the ribbon, the trained models, the gates |
+| `finetune/` | the shared protocol (clips, question, folds, scoring), the model inputs, the possession target, and the trained models |
 | `finetune/train_frozen.py` | the frozen-backbone runs |
-| `scripts/` | the cache pipeline and the methods that train nothing or train a linear head |
+| `scripts/` | the cache pipeline and the methods that train nothing or train a linear classifier |
 | `poc/` | the MobileNetV2 + LSTM model and the script that runs it on the corpus |
 
 ## Third-party

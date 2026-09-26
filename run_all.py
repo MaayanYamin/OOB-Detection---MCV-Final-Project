@@ -19,35 +19,21 @@ STATUS = os.path.join(LOGS, "status.json")
 PY = sys.executable
 ATTEMPTS = 2
 
-NAMES = {
-    "majority": "majority class (the bar)",
-    "ballcolour_last24": "jersey colour around the ball",
-    "ballcolour_last8": "jersey colour around the ball, last 8 frames",
-    "ballcolour_all": "jersey colour around the ball, whole clip",
-    "nearest_player": "team of the player nearest the ball",
-    "players_colour": "colour of the players near the ball",
-    "clip_zeroshot_frame": "CLIP zero-shot, whole frame",
-    "clip_zeroshot_ballcrop": "CLIP zero-shot, ball window",
-    "mobilenet_linear": "MobileNet features + linear head",
-    "kinematic_linear": "ball and player kinematics + linear head",
-    "ribbon_baseline": "last player attached to the ball, no training",
-    "videomae_raw_game": "VideoMAE frozen + head, whole frame",
-    "videomae_ball_game": "VideoMAE frozen + head, ball window",
-    "vjepa2_raw_game": "V-JEPA 2 frozen + head, whole frame",
-    "vjepa2_ball_game": "V-JEPA 2 frozen + head, ball window",
+RUNS = {
+    "videomae_raw_game": "VideoMAE (frozen) + head, whole frame",
     "poc_mobilenet_lstm_game": "MobileNetV2 + LSTM",
-    "qwen_zs_raw_v2": "Qwen2.5-VL zero-shot, whole frame",
-    "qwen_zs_ball_v2": "Qwen2.5-VL zero-shot, ball window",
-    "qwen_lora_ball_v2_game": "Qwen2.5-VL QLoRA, ball window",
-    "vjepa2_raw_v2_game": "V-JEPA 2 + head, whole frame (GPU grid)",
-    "vjepa2_ball_v2_game": "V-JEPA 2 + head, ball window (GPU grid)",
-    "vjepa2_ball_aug_v2_game": "V-JEPA 2 + head, ball window, augmented (GPU grid)",
-    "vjepa2_ball_v2_arena": "V-JEPA 2 + head, ball window, unseen arenas",
-    "videomae_ball_v2_game": "VideoMAE fine-tuned, ball window (GPU grid)",
-    "videomae_ball_rib_v2_game": "VideoMAE fine-tuned + possession ribbon (GPU grid)",
-    "videomae_ball_rib_v2_arena": "VideoMAE + ribbon, unseen arenas",
+    "videomae_ball_rib_game": "VideoMAE fine-tuned + possession target",
+    "vjepa2_raw_game": "V-JEPA 2 (frozen) + head, whole frame",
+    "qwen_zs_raw": "Qwen2.5-VL zero-shot, whole frame",
+    "qwen_lora_ball_game": "Qwen2.5-VL QLoRA, ball window",
 }
-GPU_GRID_RUNS = 22
+CSV_METHODS = {
+    "ballcolour_last24": "jersey colour around the ball",
+    "clip_zeroshot_ballcrop": "CLIP zero-shot, ball window",
+    "mobilenet_linear": "MobileNet features + linear classifier",
+    "nearest_player": "team of the player nearest the ball",
+    "kinematic_linear": "ball/player kinematics + linear classifier",
+}
 
 
 def n_clips():
@@ -78,10 +64,6 @@ def in_predictions(method):
         with open(PREDICTIONS, encoding="utf-8") as fh:
             return any(("," + method + ",") in line for line in fh)
     return check
-
-
-def grid_done():
-    return len(glob.glob(os.path.join(RESULTS, "*_v2*.json"))) >= GPU_GRID_RUNS
 
 
 def marker(name):
@@ -120,20 +102,20 @@ STAGES = [
     stage("frames_ball", ["finetune/frames.py", "--kind", "ball"],
           cached("ftin_ball", "npy", slack=1), 45),
     stage("ribbon", ["finetune/ribbon.py"], cached("ribbon", "npz", slack=1), 20),
-    stage("ribbon_baseline", ["finetune/ribbon.py", "--baseline"], None, 5),
-    stage("vjepa2_raw", ["finetune/train_frozen.py", "--backbone", "vjepa2", "--input", "raw"],
+    stage("videomae_frozen", ["finetune/train_frozen.py", "--backbone", "videomae",
+                              "--input", "raw"], seeds("videomae_raw_game"), 110),
+    stage("vjepa2_frozen", ["finetune/train_vjepa2.py", "--input", "raw"],
           seeds("vjepa2_raw_game"), 150),
-    stage("videomae_raw", ["finetune/train_frozen.py", "--backbone", "videomae",
-                           "--input", "raw"], seeds("videomae_raw_game"), 110),
-    stage("vjepa2_ball", ["finetune/train_frozen.py", "--backbone", "vjepa2", "--input", "ball",
-                          "--seeds", "0"], seeds("vjepa2_ball_game", (0,)), 150),
-    stage("videomae_ball", ["finetune/train_frozen.py", "--backbone", "videomae",
-                            "--input", "ball", "--seeds", "0"],
-          seeds("videomae_ball_game", (0,)), 110),
     stage("poc", ["poc/run_poc_on_corpus.py"],
           has("finetune/results/poc_mobilenet_lstm_game_s0.json"), 60),
     stage("gpu_check", ["finetune/gpu_check.py"], None, 1, gpu=True),
-    stage("gpu_grid", ["finetune/run_all.py"], grid_done, 1260, gpu=True),
+    stage("videomae_ribbon", ["finetune/train_videomae.py", "--input", "ball",
+                              "--aux-weight", "0.3"], seeds("videomae_ball_rib_game"), 360,
+          gpu=True),
+    stage("qwen_zeroshot", ["finetune/train_qwen.py", "--mode", "zeroshot", "--input", "raw"],
+          has("finetune/results/qwen_zs_raw.json"), 25, gpu=True),
+    stage("qwen_lora", ["finetune/train_qwen.py", "--mode", "lora", "--input", "ball"],
+          seeds("qwen_lora_ball_game"), 290, gpu=True),
     stage("merge", ["scripts/merge_model_predictions.py"], in_predictions("vjepa2_raw"), 2),
 ]
 BY_NAME = {s["name"]: s for s in STAGES}
@@ -194,65 +176,52 @@ def labels():
     return {i.cid: i.y_home for i in load_items()}
 
 
-def from_results():
-    rows, covered = {}, set()
+def run_rows():
+    runs = {}
     for f in sorted(glob.glob(os.path.join(RESULTS, "*.json"))):
         try:
             d = json.load(open(f, encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if "score" not in d or "model" not in d:
+        key = re.sub(r"_s\d+$", "", d.get("name", ""))
+        if key not in RUNS or "score" not in d:
             continue
-        key = re.sub(r"_s\d+$", "", d.get("name", os.path.basename(f)[:-5]))
-        r = rows.setdefault(key, dict(acc=[], n=0, stuck=0, folds=0))
+        r = runs.setdefault(key, dict(acc=[], n=0))
         r["acc"].append(d["score"]["clip"]["acc"])
         r["n"] = d["score"]["clip"]["n"]
-        pl = d.get("plateau")
-        if isinstance(pl, list):
-            r["stuck"] += sum(1 for x in pl if x)
-            r["folds"] += len(pl)
-        covered.add("%s_%s" % (d["model"], d["input"]))
-    out = []
-    for key, r in rows.items():
-        out.append((key, 100 * sum(r["acc"]) / len(r["acc"]), r["n"], len(r["acc"]),
-                    r["stuck"], r["folds"]))
-    return out, covered
+    return [(RUNS[k], 100 * sum(r["acc"]) / len(r["acc"]), r["n"], len(r["acc"]))
+            for k, r in runs.items()]
 
 
-def from_predictions(truth, covered):
+def csv_rows(truth):
     if not os.path.exists(PREDICTIONS):
         return []
     per = {}
     with open(PREDICTIONS, encoding="utf-8") as fh:
         for r in csv.DictReader(fh):
-            if r["clip"] in truth:
+            if r["clip"] in truth and r["method"] in CSV_METHODS:
                 per.setdefault(r["method"], {})[r["clip"]] = float(r["p_home"])
-    out = []
+    rows = []
     for m, d in per.items():
-        if m in covered:
-            continue
         hits = sum((d[c] > 0.5) == bool(truth[c]) for c in d)
-        out.append((m, 100.0 * hits / len(d), len(d), 1, 0, 0))
-    return out
+        rows.append((CSV_METHODS[m], 100.0 * hits / len(d), len(d), 1))
+    return rows
 
 
 def summary():
     truth = labels()
     n = len(truth)
     bar = max(sum(truth.values()), n - sum(truth.values())) / n
-    res, covered = from_results()
-    rows = res + from_predictions(truth, covered)
-    rows.append(("majority", 100 * bar, n, 1, 0, 0))
+    rows = run_rows() + csv_rows(truth) + [("majority class (the bar)", 100 * bar, n, 1)]
     rows.sort(key=lambda r: -r[1])
-    print("\naccuracy on the clips each method could score:\n")
-    for key, acc, clips, ns, stuck, folds in rows:
-        line = "%-52s %5.1f%%   %3d clips" % (NAMES.get(key, key), acc, clips)
-        if ns > 1:
-            line += "   %d seeds" % ns
-        if stuck:
-            line += "   %d/%d folds never trained" % (stuck, folds)
-        print(line)
-    print("\nthe bar is the majority class: always answer the more common team")
+    print()
+    print("accuracy on the clips each method could score:")
+    print()
+    for name, acc, clips, ns in rows:
+        line = "%-42s %5.1f%%   %3d clips" % (name, acc, clips)
+        print(line + ("   %d seeds" % ns if ns > 1 else ""))
+    print()
+    print("a setting with several seeds is the mean over its seeds")
 
 
 def show():
@@ -266,7 +235,7 @@ def show():
             state = "done"
         else:
             state = st["stages"].get(s["name"], {}).get("state", "pending")
-        print("  %-16s %-22s %s~%5d min" % (s["name"], state, "GPU " if s["gpu"] else "    ",
+        print("  %-16s %-22s %s~%4d min" % (s["name"], state, "GPU " if s["gpu"] else "    ",
                                             s["mins"]))
 
 
@@ -308,11 +277,12 @@ def main():
 
     gpu = cuda()
     st = load_status()
-    failed = []
+    failed, blocked = [], False
     for s in todo:
-        if s["gpu"] and (a.cpu_only or not gpu):
-            print("[%s] %s: skipped, needs a GPU" % (now(), s["name"]), flush=True)
-            st["stages"].setdefault(s["name"], {})["state"] = "skipped, needs a GPU"
+        if s["gpu"] and (a.cpu_only or not gpu or blocked):
+            why = "needs a GPU" if not gpu or a.cpu_only else "the CUDA check failed"
+            print("[%s] %s: skipped, %s" % (now(), s["name"], why), flush=True)
+            st["stages"].setdefault(s["name"], {})["state"] = "skipped, " + why
             save_status(st)
             continue
         if s["done"]() and not a.force:
@@ -321,8 +291,7 @@ def main():
         if not run_one(s, st):
             failed.append(s["name"])
             if s["name"] == "gpu_check":
-                print("[%s] CUDA gate failed: not starting the GPU grid" % now(), flush=True)
-                todo = [x for x in todo if x["name"] != "gpu_grid"]
+                blocked = True
     print("\n[%s] %s" % (now(), ("failed: " + ", ".join(failed) + " (see logs/)") if failed
                          else "all stages done"))
     summary()

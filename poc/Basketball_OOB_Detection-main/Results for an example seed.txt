@@ -1,0 +1,85 @@
+------------------------------------------------------------
+Training Fold 1
+------------------------------------------------------------
+Epoch 1/5: Train Loss=0.589, Train Acc=66.7%, Val Acc=40.0%
+Epoch 2/5: Train Loss=0.525, Train Acc=73.3%, Val Acc=40.0%
+Epoch 3/5: Train Loss=0.292, Train Acc=86.7%, Val Acc=40.0%
+Epoch 4/5: Train Loss=0.305, Train Acc=93.3%, Val Acc=80.0%
+Epoch 5/5: Train Loss=0.442, Train Acc=82.2%, Val Acc=60.0%
+
+Fold 1 Best Predictions (Best Val Acc: 80.0%):
+  Correct clip 2 - Away team ball.mp4    | Pred: Away | True: Away
+  False clip 14 - Away team ball.mp4   | Pred: Home | True: Away
+  Correct clip 7 - Home team ball.mp4    | Pred: Home | True: Home
+  Correct clip 9 - Home team ball.mp4    | Pred: Home | True: Home
+  Correct clip 18 - Home team ball.mp4   | Pred: Home | True: Home
+
+Fold 2: Train on 15 videos, Validate on 5 videos
+Val videos: ['clip 1 - Away t', 'clip 6 - Away t', 'clip 10 - Away ', 'clip 5 - Away t', 'clip 15 - Away ']
+
+------------------------------------------------------------
+Training Fold 2
+------------------------------------------------------------
+Epoch 1/5: Train Loss=0.677, Train Acc=53.3%, Val Acc=40.0%
+Epoch 2/5: Train Loss=0.672, Train Acc=80.0%, Val Acc=60.0%
+Epoch 3/5: Train Loss=0.361, Train Acc=88.9%, Val Acc=40.0%
+Epoch 4/5: Train Loss=0.241, Train Acc=91.1%, Val Acc=80.0%
+Epoch 5/5: Train Loss=0.545, Train Acc=88.9%, Val Acc=100.0%
+
+Fold 2 Best Predictions (Best Val Acc: 100.0%):
+  Correct clip 1 - Away team ball.mp4    | Pred: Away | True: Away
+  Correct clip 6 - Away team ball.mp4    | Pred: Away | True: Away
+  Correct clip 10 - Away team ball.mp4   | Pred: Away | True: Away
+  Correct clip 5 - Away team ball.mp4    | Pred: Away | True: Away
+  Correct clip 15 - Away team ball.mp4   | Pred: Away | True: Away
+
+Fold 3: Train on 15 videos, Validate on 5 videos
+Val videos: ['clip 19 - Home ', 'clip 3 - Away t', 'clip 4 - Away t', 'clip 20 - Home ', 'clip 16 - Away ']
+
+------------------------------------------------------------
+Training Fold 3
+------------------------------------------------------------
+Epoch 1/5: Train Loss=0.648, Train Acc=64.4%, Val Acc=60.0%
+Epoch 2/5: Train Loss=0.514, Train Acc=68.9%, Val Acc=80.0%
+Epoch 3/5: Train Loss=0.413, Train Acc=80.0%, Val Acc=80.0%
+Epoch 4/5: Train Loss=0.206, Train Acc=93.3%, Val Acc=100.0%
+Epoch 5/5: Train Loss=0.268, Train Acc=88.9%, Val Acc=100.0%
+
+Fold 3 Best Predictions (Best Val Acc: 100.0%):
+  Correct clip 19 - Home team ball.mp4   | Pred: Home | True: Home
+  Correct clip 3 - Away team ball.mp4    | Pred: Away | True: Away
+  Correct clip 4 - Away team ball.mp4    | Pred: Away | True: Away
+  Correct clip 20 - Home team ball.mp4   | Pred: Home | True: Home
+  Correct clip 16 - Away team ball.mp4   | Pred: Away | True: Away
+
+Fold 4: Train on 15 videos, Validate on 5 videos
+Val videos: ['clip 12 - Away ', 'clip 17 - Away ', 'clip 11 - Away ', 'clip 8 - Home t', 'clip 13 - Home ']
+
+------------------------------------------------------------
+Training Fold 4
+------------------------------------------------------------
+Epoch 1/5: Train Loss=0.660, Train Acc=57.8%, Val Acc=60.0%
+Epoch 2/5: Train Loss=0.624, Train Acc=66.7%, Val Acc=60.0%
+Epoch 3/5: Train Loss=0.431, Train Acc=88.9%, Val Acc=80.0%
+Epoch 4/5: Train Loss=0.278, Train Acc=88.9%, Val Acc=80.0%
+Epoch 5/5: Train Loss=0.674, Train Acc=88.9%, Val Acc=80.0%
+
+Fold 4 Best Predictions (Best Val Acc: 80.0%):
+  Correct clip 12 - Away team ball.mp4   | Pred: Away | True: Away
+  Correct clip 17 - Away team ball.mp4   | Pred: Away | True: Away
+  Correct clip 11 - Away team ball.mp4   | Pred: Away | True: Away
+  Correct clip 8 - Home team ball.mp4    | Pred: Home | True: Home
+  False clip 13 - Home team ball.mp4   | Pred: Away | True: Home
+
+------------------------------------------------------------
+CROSS-VALIDATION RESULTS
+------------------------------------------------------------
+Fold 1: 80.0%
+Fold 2: 100.0%
+Fold 3: 100.0%
+Fold 4: 80.0%
+Overall Accuracy: 90.0% (18/20)
+
+Performance by Label:
+  Home team ball: 85.7% (6/7)
+  Away team ball: 92.3% (12/13)

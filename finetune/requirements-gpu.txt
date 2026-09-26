@@ -1,0 +1,29 @@
+# Environment for the GPU laptop (finetune/ and the caching scripts).
+#
+# Install PyTorch WITH CUDA first - it is not listed here on purpose, because a plain
+# `pip install torch` gives the CPU build:
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+#
+# then:
+#
+#   pip install -r finetune/requirements-gpu.txt
+#
+# Never `pip install -r requirements.txt` (the root one) on the GPU laptop: its torch pin
+# would replace the CUDA build with a CPU one.
+
+numpy
+scipy
+scikit-learn
+opencv-python
+matplotlib
+pillow
+pandas
+transformers>=4.53       # V-JEPA 2 needs 4.53+, Qwen2.5-VL 4.49+
+accelerate
+peft
+bitsandbytes>=0.45       # 4-bit Qwen; has Windows wheels
+ultralytics              # YOLO detect/pose, for caching the 20 GSW clips
+omegaconf                # WASB ball detector
+hydra-core               # WASB ball detector
+gdown                    # MonoTrack weights live on Google Drive

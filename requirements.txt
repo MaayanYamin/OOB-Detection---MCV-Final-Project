@@ -1,0 +1,22 @@
+numpy==2.0.1
+scipy==1.15.3
+scikit-learn==1.8.0
+opencv-python==5.0.0.93
+matplotlib==3.9.1.post1
+pillow==10.4.0
+pandas==2.2.2
+torch==2.9.1
+torchvision==0.24.1
+transformers==5.16.1
+huggingface_hub==1.30.0
+safetensors==0.8.0
+ultralytics==8.4.142
+omegaconf==2.3.1
+hydra-core==1.3.6
+gdown==6.2.0
+six==1.16.0
+tqdm==4.67.1
+
+# GPU machines: install CUDA torch first
+# (pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126)
+# then finetune/requirements-gpu.txt instead of this file.
